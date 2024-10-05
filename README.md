@@ -1,4 +1,4 @@
-# Paytm Clone
+# Transfer-It
 
 A simplified Paytm clone built with a focus on core features such as user sign-up, account creation, and money transfers between users. The app maintains basic account management functionality, allowing users to transfer money, with the deducted amount reflected in the account balance.
 
