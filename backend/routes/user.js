@@ -103,7 +103,7 @@ router.post("/signin" , async (req,res) => {
 
         if(!user){
             return res.status(411).json({
-                message: "User doesn't exist! Please login"
+                message: "Invalid email or password"
             })
         }
         
@@ -130,20 +130,34 @@ const updateBody = zod.object({
 })
 
 router.put("/" , authMiddleware ,  async (req,res) => {
-    const {updatedResponse} = updateBody.safeParse(req.body);
+    try {
+        const {success, data: updatedResponse} = updateBody.safeParse(req.body);
 
-    if(!updatedResponse){
-        return res.status(403).json({
-            message: "Error while updating informatio"
+        if(!success){
+            return res.status(403).json({
+                message: "Error while updating information"
+            })
+        }
+
+        // Check if at least one field is being updated
+        if (!updatedResponse || Object.keys(updatedResponse).length === 0) {
+            return res.status(400).json({
+                message: "No fields to update"
+            })
+        }
+
+        await User.updateOne({_id: req.userID}, updatedResponse);
+
+        res.json({
+            message:"Updated Successfully"
         })
+    } catch (error) {
+        console.error("Update user error:", error);
+        res.status(500).json({
+            message: "Error while updating information",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
     }
-
-    await User.updateOne({_id: req.userID}, req.body);
-
-    res.json({
-        message:"Updated Successfully"
-    })
-
 })
 
 // Route to get users from the backend, filterable via firstName/lastName
@@ -186,6 +200,32 @@ router.get("/bulk", async (req, res) => {
         console.error("Bulk user search error:", error);
         res.status(500).json({
             message: "Error fetching users",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
+})
+
+// Route to get current user's info
+router.get("/me", authMiddleware, async (req, res) => {
+    try {
+        const user = await User.findOne({ _id: req.userID });
+        if (!user) {
+            return res.status(404).json({
+                message: "User not found"
+            });
+        }
+        res.json({
+            user: {
+                username: user.username,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                _id: user._id
+            }
+        });
+    } catch (error) {
+        console.error("Get user error:", error);
+        res.status(500).json({
+            message: "Error fetching user",
             error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }

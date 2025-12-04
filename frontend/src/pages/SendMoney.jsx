@@ -1,10 +1,10 @@
-import axios from 'axios';
 import api from '../lib/api';
 import React, { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useSearchParams, useNavigate } from 'react-router-dom'
 
 const SendMoney = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const id = searchParams.get("id")
   const name = searchParams.get("name");
   const [amount , setAmount] = useState(0);
@@ -12,6 +12,13 @@ const SendMoney = () => {
   const [loadingBalance , setLoadingBalance] = useState(false);
 
   useEffect(() => {
+    // Validate URL parameters
+    if (!id || !name) {
+      alert("Invalid user information. Redirecting to dashboard...");
+      navigate("/dashboard");
+      return;
+    }
+
     const fetchBalance = async () => {
       try{
         setLoadingBalance(true);
@@ -22,13 +29,14 @@ const SendMoney = () => {
         });
         setBalance(res.data.balance);
       } catch(e){
-        // ignore for now, or could show a message
+        console.error("Error fetching balance:", e);
+        // Could show error message to user
       } finally {
         setLoadingBalance(false);
       }
     };
     fetchBalance();
-  }, []);
+  }, [id, name, navigate]);
 
   return (
 

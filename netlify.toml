@@ -1,0 +1,23 @@
+# Netlify Configuration File
+# This file helps Netlify automatically configure your build settings
+
+[build]
+  # Base directory for the build
+  base = "frontend"
+  
+  # Build command
+  command = "npm install && npm run build"
+  
+  # Directory to publish (output directory)
+  publish = "frontend/dist"
+
+# Environment variables (set these in Netlify dashboard instead)
+# [build.environment]
+#   VITE_API_BASE_URL = "https://your-railway-app.up.railway.app/api/v1"
+
+# Redirect rules for React Router
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+

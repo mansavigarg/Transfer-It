@@ -8,13 +8,27 @@ const router = express.Router();
 // An endpoint for user to get their balance.
 
 router.get("/balance", authMiddleware, async (req,res) => {
-    const account = await Account.findOne({
-        userID: req.userID
-    });
+    try {
+        const account = await Account.findOne({
+            userID: req.userID
+        });
 
-    res.json({
-        balance: account.balance
-    })
+        if (!account) {
+            return res.status(404).json({
+                message: "Account not found"
+            });
+        }
+
+        res.json({
+            balance: account.balance
+        });
+    } catch (error) {
+        console.error("Get balance error:", error);
+        res.status(500).json({
+            message: "Error fetching balance",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
 })
 
 // An endpoint for user to transfer money to another account
@@ -28,6 +42,11 @@ router.post("/transfer", authMiddleware, async (req, res) => {
     }
     if (!to || !mongoose.isValidObjectId(to)) {
         return res.status(400).json({ message: "Invalid account" });
+    }
+
+    // Prevent self-transfer
+    if (req.userID.toString() === to.toString()) {
+        return res.status(400).json({ message: "Cannot transfer money to yourself" });
     }
 
     let attempt = 0;
@@ -93,6 +112,11 @@ router.post("/transfer", authMiddleware, async (req, res) => {
             });
         }
     }
+    
+    // If we've exhausted all retries without success
+    return res.status(500).json({
+        message: "Transfer failed after multiple attempts. Please try again."
+    });
 });
 
 

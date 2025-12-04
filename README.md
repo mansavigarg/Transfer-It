@@ -17,20 +17,80 @@ A simplified Paytm clone built with a focus on core features such as user sign-u
   
 ## Installation and Setup
 
-1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/paytm-clone.git
+### Prerequisites
+- Node.js 18+ 
+- MongoDB (local or MongoDB Atlas)
 
-2. Navigate to the project directory::
+### Backend Setup
+
+1. Navigate to backend directory:
    ```bash
-   cd paytm-clone
-3. Install dependencies::
+   cd backend
+   ```
+
+2. Install dependencies:
    ```bash
    npm install
-4. Set up environment variables: Create a .env file in the root directory. Add the following variables:
+   ```
+
+3. Create `.env` file in `backend/` directory:
+   ```env
+   PORT=3001
+   MONGODB_URI=mongodb://localhost:27017/paytm-app
+   JWT_SECRET=your-super-secret-jwt-key
+   FRONTEND_URL=http://localhost:5173
+   NODE_ENV=development
+   ```
+
+4. Start the backend server:
    ```bash
-    PORT=5000
-    MONGO_URI=your_mongodb_connection_string
+   npm start
+   # Or for development with auto-reload:
+   npm run dev  # (requires nodemon)
+   ```
+
+### Frontend Setup
+
+1. Navigate to frontend directory:
+   ```bash
+   cd frontend
+   ```
+
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+
+3. Create `.env` file in `frontend/` directory (optional, defaults to localhost):
+   ```env
+   VITE_API_BASE_URL=http://localhost:3001/api/v1
+   ```
+
+4. Start the development server:
+   ```bash
+   npm run dev
+   ```
+
+5. Build for production:
+   ```bash
+   npm run build
+   ```
+
+## Deployment
+
+### Quick Start: Netlify + Railway
+
+**For step-by-step instructions on deploying to Netlify (Frontend) and Railway (Backend), see:**
+👉 **[NETLIFY_RAILWAY_DEPLOYMENT.md](./NETLIFY_RAILWAY_DEPLOYMENT.md)**
+
+### Other Deployment Options
+
+For general deployment instructions, see [DEPLOYMENT.md](./DEPLOYMENT.md)
+
+Quick deployment options:
+- **Frontend**: Deploy to Vercel, Netlify, or any static hosting
+- **Backend**: Deploy to Railway, Render, Heroku, or any Node.js hosting
+- **Full Stack**: Use Docker Compose (see `docker-compose.yml`)
 
 
 ![alt text](./Screenshot%202024-10-05%20at%203.49.46 PM.png)
