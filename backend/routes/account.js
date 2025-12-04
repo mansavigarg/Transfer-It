@@ -1,6 +1,6 @@
 const express = require("express");
 const { authMiddleware } = require("../middleware");
-const { Account } = require("../db");
+const { Account, Transaction, User } = require("../db");
 const { default: mongoose } = require("mongoose");
 
 const router = express.Router();
@@ -83,6 +83,13 @@ router.post("/transfer", authMiddleware, async (req, res) => {
                 )
                     .session(session)
                     .exec();
+
+                // Create transaction record
+                await Transaction.create([{
+                    from: req.userID,
+                    to: to,
+                    amount: numericAmount
+                }], { session });
             }, {
                 writeConcern: { w: "majority" }
             });
@@ -117,6 +124,47 @@ router.post("/transfer", authMiddleware, async (req, res) => {
     return res.status(500).json({
         message: "Transfer failed after multiple attempts. Please try again."
     });
+});
+
+// An endpoint to get transaction history
+router.get("/transactions", authMiddleware, async (req, res) => {
+    try {
+        const transactions = await Transaction.find({
+            $or: [
+                { from: req.userID },
+                { to: req.userID }
+            ]
+        })
+        .populate('from', 'firstName lastName')
+        .populate('to', 'firstName lastName')
+        .sort({ timestamp: -1 })
+        .limit(50); // Limit to last 50 transactions
+
+        const formattedTransactions = transactions.map(txn => ({
+            id: txn._id,
+            from: {
+                id: txn.from._id,
+                name: `${txn.from.firstName} ${txn.from.lastName}`
+            },
+            to: {
+                id: txn.to._id,
+                name: `${txn.to.firstName} ${txn.to.lastName}`
+            },
+            amount: txn.amount,
+            timestamp: txn.timestamp,
+            type: txn.from._id.toString() === req.userID.toString() ? 'sent' : 'received'
+        }));
+
+        res.json({
+            transactions: formattedTransactions
+        });
+    } catch (error) {
+        console.error("Get transactions error:", error);
+        res.status(500).json({
+            message: "Error fetching transactions",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
 });
 
 

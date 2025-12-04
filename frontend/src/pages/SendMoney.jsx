@@ -1,6 +1,7 @@
 import api from '../lib/api';
 import React, { useEffect, useState } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 
 const SendMoney = () => {
   const [searchParams] = useSearchParams();
@@ -10,12 +11,15 @@ const SendMoney = () => {
   const [amount , setAmount] = useState(0);
   const [balance , setBalance] = useState(null);
   const [loadingBalance , setLoadingBalance] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
 
   useEffect(() => {
     // Validate URL parameters
     if (!id || !name) {
-      alert("Invalid user information. Redirecting to dashboard...");
-      navigate("/dashboard");
+      toast.error("Invalid user information. Redirecting to dashboard...");
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
       return;
     }
 
@@ -74,14 +78,16 @@ const SendMoney = () => {
               setAmount(e.target.value);
             }} type="number" placeholder='Enter Amount' className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
             </div>
-            <button onClick={async () => {
-              const numericAmount = Number(amount);
-              if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
-                alert("Please enter a valid amount greater than 0.");
-                return;
-              }
-              try {
-                await api.post("/account/transfer" , {
+            <button 
+              onClick={async () => {
+                const numericAmount = Number(amount);
+                if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+                  toast.error("Please enter a valid amount greater than 0.");
+                  return;
+                }
+                
+                setIsTransferring(true);
+                const transferPromise = api.post("/account/transfer" , {
                   to: id,
                   amount: numericAmount
                 }, {
@@ -89,24 +95,80 @@ const SendMoney = () => {
                     Authorization : "Bearer " + localStorage.getItem("token")
                   }
                 });
-                alert("Transfer Successful");
-                // Refresh balance after successful transfer
-                try{
-                  const res = await api.get("/account/balance", {
-                    headers: {
-                      Authorization : "Bearer " + localStorage.getItem("token")
-                    }
-                  });
-                  setBalance(res.data.balance);
-                } catch(e){
-                  // ignore refresh failure silently
+
+                toast.promise(
+                  transferPromise,
+                  {
+                    loading: 'Processing transfer...',
+                    success: (data) => {
+                      // Refresh balance after successful transfer
+                      api.get("/account/balance", {
+                        headers: {
+                          Authorization : "Bearer " + localStorage.getItem("token")
+                        }
+                      })
+                      .then(res => {
+                        setBalance(res.data.balance);
+                      })
+                      .catch(e => {
+                        console.error("Error refreshing balance:", e);
+                      });
+                      
+                      // Clear the amount input
+                      setAmount(0);
+                      
+                      return `Successfully transferred ₹${numericAmount.toFixed(2)} to ${name}!`;
+                    },
+                    error: (err) => {
+                      return err?.response?.data?.message || "Transfer failed. Please try again.";
+                    },
+                  },
+                  {
+                    style: {
+                      minWidth: '300px',
+                    },
+                    success: {
+                      duration: 5000,
+                      icon: '✅',
+                    },
+                    error: {
+                      duration: 5000,
+                      icon: '❌',
+                    },
+                  }
+                );
+
+                try {
+                  await transferPromise;
+                } catch (err) {
+                  // Error is handled by toast.promise
+                } finally {
+                  setIsTransferring(false);
                 }
-              } catch (err) {
-                const msg = err?.response?.data?.message || "Transfer failed";
-                alert(msg);
-              }
-            }} className="justify-center rounded-md shadow-lg text-sm font-medium ring-offset-background transition-colors h-10 px-4 py-2 w-full bg-green-500 text-white hover:bg-green-600 hover:shadow-2xl">
-                        Initiate Transfer
+              }}
+              disabled={isTransferring}
+              className={`
+                justify-center rounded-md shadow-lg text-sm font-medium 
+                ring-offset-background transition-all duration-200
+                h-10 px-4 py-2 w-full
+                ${isTransferring 
+                  ? 'bg-gray-400 cursor-not-allowed' 
+                  : 'bg-green-500 hover:bg-green-600 hover:shadow-2xl active:scale-95'
+                }
+                text-white
+              `}
+            >
+              {isTransferring ? (
+                <span className="flex items-center justify-center gap-2">
+                  <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Processing...
+                </span>
+              ) : (
+                'Initiate Transfer'
+              )}
             </button>
           </div>
 
