@@ -5,6 +5,7 @@ import Heading from '../components/Heading'
 import InputBox from '../components/InputBox'
 import SubHeading from '../components/SubHeading'
 import axios from 'axios'
+import api from '../lib/api'
 import { useNavigate } from 'react-router-dom'
 
 const Signup = () => {
@@ -36,7 +37,7 @@ const Signup = () => {
 
             <div className=' pt-4'>
               <Button onClick={async () => {
-                const response = await axios.post("http://localhost:3000/api/v1/user/signup", {
+                const response = await api.post("/user/signup", {
                   username,
                   firstName,
                   lastName,

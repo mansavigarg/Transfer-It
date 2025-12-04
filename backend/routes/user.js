@@ -70,9 +70,10 @@ router.post("/signup" , async (req,res) => {
             token: token
         })
     } catch(error) {
-        console.error(error);
+        console.error("Signup error:", error);
         res.status(500).json({
-          message: "Internal server error"
+          message: "Internal server error",
+          error: process.env.NODE_ENV === 'development' ? error.message : undefined
         });
     }
 
@@ -89,7 +90,7 @@ router.post("/signin" , async (req,res) => {
     try{    
         const response = req.body;
         const success = signinBody.safeParse(response);
-        if (!success) {
+        if (!success.success) {
             return res.status(411).json({
                 message: "Incorrect inputs"
             })

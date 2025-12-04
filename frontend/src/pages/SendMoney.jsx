@@ -1,5 +1,6 @@
 import axios from 'axios';
-import React, { useState } from 'react'
+import api from '../lib/api';
+import React, { useEffect, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 
 const SendMoney = () => {
@@ -7,6 +8,27 @@ const SendMoney = () => {
   const id = searchParams.get("id")
   const name = searchParams.get("name");
   const [amount , setAmount] = useState(0);
+  const [balance , setBalance] = useState(null);
+  const [loadingBalance , setLoadingBalance] = useState(false);
+
+  useEffect(() => {
+    const fetchBalance = async () => {
+      try{
+        setLoadingBalance(true);
+        const res = await api.get("/account/balance", {
+          headers: {
+            Authorization : "Bearer " + localStorage.getItem("token")
+          }
+        });
+        setBalance(res.data.balance);
+      } catch(e){
+        // ignore for now, or could show a message
+      } finally {
+        setLoadingBalance(false);
+      }
+    };
+    fetchBalance();
+  }, []);
 
   return (
 
@@ -19,32 +41,63 @@ const SendMoney = () => {
         
           <div className=' p-6 flex items-center space-x-4'>
             <div className=' w-10 h-10 bg-green-500 rounded-full flex justify-center items-center'>
-              <span class="text-2xl text-white">{name[0].toUpperCase()}</span>
+              <span className="text-2xl text-white">{(name?.[0] || "?").toUpperCase()}</span>
             </div>
             <div className=' text-2xl font-semibold '>
               {name}
             </div>
           </div>
 
+          <div className=' px-6 pb-2'>
+            <div className=' text-sm text-slate-600'>
+              Current Balance:
+            </div>
+            <div className=' text-xl font-semibold'>
+              {loadingBalance ? "Loading..." : (balance !== null ? `₹ ${balance.toFixed(2)}` : "—")}
+            </div>
+          </div>
+
           <div className=' space-y-4'>
             <div className=' space-y-2'>
-            <label class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" for="amount" >
+            <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70" htmlFor="amount" >
                         Amount (in Rs)
             </label>
             <input onChange={(e) => {
               setAmount(e.target.value);
-            }} type="number" placeholder='Enter Amount' class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
+            }} type="number" placeholder='Enter Amount' className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
             </div>
-            <button onClick={(e) => {
-              axios.post("http://localhost:3000/api/v1/account/transfer" , {
-                to: id,
-                amount
-              }, {
-                headers: {
-                  Authorization : "Bearer" + localStorage.getItem("token")
+            <button onClick={async () => {
+              const numericAmount = Number(amount);
+              if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+                alert("Please enter a valid amount greater than 0.");
+                return;
+              }
+              try {
+                await api.post("/account/transfer" , {
+                  to: id,
+                  amount: numericAmount
+                }, {
+                  headers: {
+                    Authorization : "Bearer " + localStorage.getItem("token")
+                  }
+                });
+                alert("Transfer Successful");
+                // Refresh balance after successful transfer
+                try{
+                  const res = await api.get("/account/balance", {
+                    headers: {
+                      Authorization : "Bearer " + localStorage.getItem("token")
+                    }
+                  });
+                  setBalance(res.data.balance);
+                } catch(e){
+                  // ignore refresh failure silently
                 }
-              })
-            }} class="justify-center rounded-md shadow-lg text-sm font-medium ring-offset-background transition-colors h-10 px-4 py-2 w-full bg-green-500 text-white hover:bg-green-600 hover:shadow-2xl">
+              } catch (err) {
+                const msg = err?.response?.data?.message || "Transfer failed";
+                alert(msg);
+              }
+            }} className="justify-center rounded-md shadow-lg text-sm font-medium ring-offset-background transition-colors h-10 px-4 py-2 w-full bg-green-500 text-white hover:bg-green-600 hover:shadow-2xl">
                         Initiate Transfer
             </button>
           </div>
