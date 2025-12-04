@@ -149,28 +149,46 @@ router.put("/" , authMiddleware ,  async (req,res) => {
 // Route to get users from the backend, filterable via firstName/lastName
 
 router.get("/bulk", async (req, res) => {
-    const filter = req.query.filter || "";
+    try {
+        const filter = req.query.filter || "";
 
-    const users = await User.find({
-        $or: [{
-            firstName: {
-                "$regex": filter
-            }
-        }, {
-            lastName: {
-                "$regex": filter
-            }
-        }]
-    })
+        // Build query - if filter is empty, return all users
+        let query = {};
+        if (filter) {
+            // Escape special regex characters and make case-insensitive
+            const escapedFilter = filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            query = {
+                $or: [{
+                    firstName: {
+                        "$regex": escapedFilter,
+                        "$options": "i" // case-insensitive
+                    }
+                }, {
+                    lastName: {
+                        "$regex": escapedFilter,
+                        "$options": "i" // case-insensitive
+                    }
+                }]
+            };
+        }
 
-    res.json({
-        user: users.map(user => ({
-            username: user.username,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            _id: user._id
-        }))
-    })
+        const users = await User.find(query);
+
+        res.json({
+            user: users.map(user => ({
+                username: user.username,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                _id: user._id
+            }))
+        });
+    } catch (error) {
+        console.error("Bulk user search error:", error);
+        res.status(500).json({
+            message: "Error fetching users",
+            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+        });
+    }
 })
 
 
