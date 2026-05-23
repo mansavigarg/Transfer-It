@@ -4,6 +4,7 @@ const { User, Account } = require("../db");
 const { JWT_SECRET } = require("../config")
 const jwt = require("jsonwebtoken");
 const { authMiddleware } = require("../middleware");
+const bcrypt = require("bcrypt");
 
 const router = express.Router();
 
@@ -30,8 +31,33 @@ router.post("/signup" , async (req,res) => {
         const validateResponse = validateInput(response);
 
         if(!validateResponse.success){
+            const errors = validateResponse.error.errors;
+            let errorMessage = "Invalid input. ";
+            
+            // Check for specific validation errors
+            const emailError = errors.find(e => e.path.includes('username'));
+            const passwordError = errors.find(e => e.path.includes('password'));
+            const firstNameError = errors.find(e => e.path.includes('firstName'));
+            const lastNameError = errors.find(e => e.path.includes('lastName'));
+            
+            if (emailError) {
+                errorMessage = "Invalid email format. Please enter a valid email address.";
+            } else if (passwordError) {
+                if (passwordError.message.includes('minimum')) {
+                    errorMessage = "Password must be at least 6 characters long.";
+                } else if (passwordError.message.includes('regex')) {
+                    errorMessage = "Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).";
+                } else {
+                    errorMessage = "Password does not meet requirements.";
+                }
+            } else if (firstNameError || lastNameError) {
+                errorMessage = "First name and last name are required.";
+            } else {
+                errorMessage = "Please fill in all required fields correctly.";
+            }
+            
             return res.status(411).json({
-                message: "Email already taken / Incorrect inputs"
+                message: errorMessage
             })
         }
 
@@ -41,13 +67,16 @@ router.post("/signup" , async (req,res) => {
 
         if(existingUser){
             return res.status(411).json({
-                message: "Email already taken / Incorrect inputs"
+                message: "Email already taken. Please use a different email address."
             })
         }
 
+        // Hash password before storing
+        const hashedPassword = await bcrypt.hash(req.body.password, 10);
+
         const user = await User.create({
             username: req.body.username,
-            password: req.body.password,
+            password: hashedPassword,
             firstName: req.body.firstName,
             lastName: req.body.lastName
         })
@@ -91,17 +120,34 @@ router.post("/signin" , async (req,res) => {
         const response = req.body;
         const success = signinBody.safeParse(response);
         if (!success.success) {
+            const errors = success.error.errors;
+            const emailError = errors.find(e => e.path.includes('username'));
+            
+            if (emailError) {
+                return res.status(411).json({
+                    message: "Invalid email format. Please enter a valid email address."
+                })
+            }
+            
             return res.status(411).json({
-                message: "Incorrect inputs"
+                message: "Please enter both email and password."
             })
         }
 
         const user = await User.findOne({
-            username: req.body.username,
-            password: req.body.password
+            username: req.body.username
         })
 
         if(!user){
+            return res.status(411).json({
+                message: "Invalid email or password"
+            })
+        }
+
+        // Compare hashed password
+        const isPasswordValid = await bcrypt.compare(req.body.password, user.password);
+        
+        if(!isPasswordValid){
             return res.status(411).json({
                 message: "Invalid email or password"
             })
@@ -146,6 +192,11 @@ router.put("/" , authMiddleware ,  async (req,res) => {
             })
         }
 
+        // Hash password if it's being updated
+        if (updatedResponse.password) {
+            updatedResponse.password = await bcrypt.hash(updatedResponse.password, 10);
+        }
+
         await User.updateOne({_id: req.userID}, updatedResponse);
 
         res.json({
@@ -166,21 +217,20 @@ router.get("/bulk", async (req, res) => {
     try {
         const filter = req.query.filter || "";
 
-        // Build query - if filter is empty, return all users
+
         let query = {};
         if (filter) {
-            // Escape special regex characters and make case-insensitive
             const escapedFilter = filter.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
             query = {
                 $or: [{
                     firstName: {
                         "$regex": escapedFilter,
-                        "$options": "i" // case-insensitive
+                        "$options": "i" 
                     }
                 }, {
                     lastName: {
                         "$regex": escapedFilter,
-                        "$options": "i" // case-insensitive
+                        "$options": "i" 
                     }
                 }]
             };

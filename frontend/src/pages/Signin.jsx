@@ -6,6 +6,7 @@ import Button from '../components/Button'
 import BottomWarning from '../components/BottomWarning'
 import api from '../lib/api'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 
 const Signin = () => {
   const [username, setUsername] = useState("");
@@ -33,12 +34,33 @@ const Signin = () => {
           <div className=' pt-3'>
             <Button 
               onClick={async () => {
-                const response = await api.post("/user/signin", {
-                  username,
-                  password
-                });
-                localStorage.setItem("token", response.data.token);
-                navigate("/dashboard");
+                try {
+                  // Basic client-side validation
+                  if (!username || !password) {
+                    toast.error("Please enter both email and password");
+                    return;
+                  }
+
+                  // Basic email format check
+                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                  if (!emailRegex.test(username)) {
+                    toast.error("Please enter a valid email address");
+                    return;
+                  }
+
+                  const response = await api.post("/user/signin", {
+                    username,
+                    password
+                  });
+                  
+                  localStorage.setItem("token", response.data.token);
+                  toast.success("Signed in successfully!");
+                  navigate("/dashboard");
+                } catch (error) {
+                  // Extract error message from response
+                  const errorMessage = error?.response?.data?.message || "An error occurred. Please try again.";
+                  toast.error(errorMessage);
+                }
               }}
               label={"Sign In"} 
             />

@@ -4,9 +4,9 @@ import Button from '../components/Button'
 import Heading from '../components/Heading'
 import InputBox from '../components/InputBox'
 import SubHeading from '../components/SubHeading'
-import axios from 'axios'
 import api from '../lib/api'
 import { useNavigate } from 'react-router-dom'
+import toast from 'react-hot-toast'
 
 const Signup = () => {
   const [firstName, setFirstName] = useState("")
@@ -37,14 +37,48 @@ const Signup = () => {
 
             <div className=' pt-4'>
               <Button onClick={async () => {
-                const response = await api.post("/user/signup", {
-                  username,
-                  firstName,
-                  lastName,
-                  password
-                });
-                localStorage.setItem("token" , response.data.token)  // two items ("KEY" , value)
-                navigate("/dashboard");
+                try {
+                  // Basic client-side validation
+                  if (!firstName || !lastName || !username || !password) {
+                    toast.error("Please fill in all fields");
+                    return;
+                  }
+
+                  // Basic email format check
+                  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                  if (!emailRegex.test(username)) {
+                    toast.error("Please enter a valid email address");
+                    return;
+                  }
+
+                  // Basic password length check
+                  if (password.length < 6) {
+                    toast.error("Password must be at least 6 characters long");
+                    return;
+                  }
+
+                  // Password complexity check
+                  const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]+$/;
+                  if (!passwordRegex.test(password)) {
+                    toast.error("Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&)");
+                    return;
+                  }
+
+                  const response = await api.post("/user/signup", {
+                    username,
+                    firstName,
+                    lastName,
+                    password
+                  });
+                  
+                  localStorage.setItem("token" , response.data.token);
+                  toast.success("Account created successfully!");
+                  navigate("/dashboard");
+                } catch (error) {
+                  // Extract error message from response
+                  const errorMessage = error?.response?.data?.message || "An error occurred. Please try again.";
+                  toast.error(errorMessage);
+                }
               }} label={"Sign Up"} />
             </div>
             <BottomWarning label={"Already have an Account?"} buttonText={"Sign in"} to={"/signin"}/>

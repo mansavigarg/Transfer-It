@@ -31,12 +31,12 @@ const Dashboard = () => {
     fetchBalance();
   }, []);
 
-  // Refetch balance when navigating back to Dashboard
+  // Refetch when navigating back to Dashboard
   useEffect(() => {
     fetchBalance();
   }, [location.pathname]);
 
-  // Refetch balance when window regains focus (user comes back from SendMoney page)
+  // Refetch when window regains focus
   useEffect(() => {
     const handleFocus = () => {
       fetchBalance();

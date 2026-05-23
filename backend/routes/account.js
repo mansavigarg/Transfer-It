@@ -77,6 +77,25 @@ router.post("/transfer", authMiddleware, async (req, res) => {
                     .session(session)
                     .exec();
 
+
+
+
+                // // 🔴 ======================================================
+                // // THE TRAP: INJECT THIS CODE BLOCK HERE
+                // // ======================================================
+                // console.log("\n\n=======================================");
+                // console.log("💰 STEP 1 COMPLETE: Money deducted from Sender.");
+                // console.log("⏸️  PAUSING FOR 20 SECONDS...");
+                // console.log("⚡️ KILL YOUR SERVER TERMINAL NOW (Ctrl + C) TO TEST ATOMICITY!");
+                // console.log("=======================================\n\n");
+                
+                // // This freezes the code here for 20 seconds
+                // await new Promise(resolve => setTimeout(resolve, 20000));
+                // // ======================================================
+
+
+
+
                 await Account.updateOne(
                     { userID: to },
                     { $inc: { balance: numericAmount } }
